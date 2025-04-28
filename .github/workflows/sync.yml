@@ -1,0 +1,41 @@
+name: WPS to Gitee Sync
+
+on:
+  repository_dispatch:  # 等待Webhook触发
+    types: [wps_submit]
+
+jobs:
+  convert-and-push:
+    runs-on: ubuntu-latest
+    steps:
+    - name: 拉取数据
+      env:
+        ROOM: ${{ github.event.client_payload.room }}
+        DATE: ${{ github.event.client_payload.date }}
+        START: ${{ github.event.client_payload.start_time }}
+        END: ${{ github.event.client_payload.end_time }}
+        PERSON: ${{ github.event.client_payload.person }}
+        DEPT: ${{ github.event.client_payload.department }}
+        PHONE: ${{ github.event.client_payload.phone }}
+        TOPIC: ${{ github.event.client_payload.topic }}
+      run: |
+        # 转换日期格式（示例：2023-05-01 → 2023/5/1）
+        FORMATTED_DATE=$(date -d "$DATE" "+%Y/%-m/%-d")
+        
+        # 生成Gitee数据行
+        CSV_LINE="$FORMATTED_DATE,$START-$END,$PERSON,$DEPT,$PHONE,$TOPIC"
+        
+        # 保存到文件
+        echo $CSV_LINE >> gitee_data.csv
+
+    - name: 提交到Gitee
+      uses: JamesIves/github-pages-deploy-action@v4
+      with:
+        target-folder: out
+        branch: master
+        repository-name: ${{ secrets.GITEE_USERNAME }}/meeting
+        token: ${{ secrets.GITEE_TOKEN }}
+        ssh-key: ${{ secrets.DEPLOY_KEY }}
+      env:
+        ACCESS_TOKEN: ${{ secrets.GITEE_TOKEN }}
+        GITEE_USER: ${{ secrets.GITEE_USERNAME }}
